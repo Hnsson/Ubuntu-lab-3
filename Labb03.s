@@ -39,13 +39,14 @@
     //
 /*-------------- Utmatning --------------*/
   outImage:
-    // Right parameters, but syscall not printing
+    movq (outBuff_ptr), %rdx   # message length
+    movq $outBuff, %rsi        # message
+    movq $1, %rdi              # stdout
+    movq $1, %rax              # sys_write????
+    syscall                    # call kernel
 
-    movq (outBuff_ptr), %rdx  # message length
-    movq outBuff, %rcx        # message
-    movq $1, %rbx             # stdout
-    movq $4, %rax             # sys_write
-    syscall                   # call kernel
+    movq $0, outBuff_ptr
+    movq outBuff_ptr, %r14
 
     ret
   putInt:
