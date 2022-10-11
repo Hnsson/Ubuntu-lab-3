@@ -28,29 +28,55 @@
 
     ret
   getInt:
+    call checkBuffSize
+    xor %rsi, %rsi
     xor %r11, %r11
+    xor %r13, %r13
     leaq inBuff, %r12
   getIntLoop:
     movb (%r12), %dl
     incq %r12
+    
+    cmpb $'+', %dl
+    je getIntNotInt
 
-    cmpb $48, %dl
+    cmpb $'-', %dl
+    je getIntNeg
+
+    cmpb $' ', %dl
+    // Concatenate all numbers
+    //je getIntNotInt
+    // Like Adam
+    je getIntDone
+    
+    cmpb $'0', %dl
     jl getIntNotInt
-    cmpb $57, %dl 
+    cmpb $'9', %dl 
     jg getIntNotInt
     // Add to buffer
-    movb %dl, %r15b
-    subb $48, %r15b
+    imulq $10, %r15
+    subb $48, %dl
+    addb %dl, %r15b
     //
   getIntNotInt:
     movq inBuff_ptr, %r14
     inc %r11
     cmpq inBuff_ptr, %r11
     jge getIntDone
+
     jmp getIntLoop
-    // 48 - 57
+  getIntNeg:
+    movq $1, %rsi
+    jmp getIntNotInt
+  getIntMakeNeg:
+    negq %r15
+    movq $0, %rsi
   getIntDone:
+    cmpq $1, %rsi
+    je getIntMakeNeg
+    movq %r15, %rax
     ret
+
   getText:
     //
   getChar:
@@ -88,11 +114,28 @@
     jne putTextLoop
     ret
   putChar:
-    //
+    call checkBuffSize
+    leaq outBuff, %rdx
+    addq outBuff_ptr, %rdx
+    movq %rdi, (%rdx)
+    incq outBuff_ptr
+    ret
   getOutPos:
-    //
+    movq outBuff_ptr, %rax
+    ret
   setOutPos:
-    //
+    cmpq $0, %rdi
+    jle setOutPosZ
+    cmpq $63, %rdi
+    jge setOutPosM
+    movq %rdi, outBuff_ptr
+    ret
+  setOutPosM:
+    movq $63, outBuff_ptr
+    ret
+  setOutPosZ:
+    movq $0, outBuff_ptr
+    ret
   checkBuffSize:
     cmpq $63, outBuff_ptr
     jge outImage
