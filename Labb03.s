@@ -28,7 +28,29 @@
 
     ret
   getInt:
+    xor %r11, %r11
+    leaq inBuff, %r12
+  getIntLoop:
+    movb (%r12), %dl
+    incq %r12
+
+    cmpb $48, %dl
+    jl getIntNotInt
+    cmpb $57, %dl 
+    jg getIntNotInt
+    // Add to buffer
+    movb %dl, %r15b
+    subb $48, %r15b
     //
+  getIntNotInt:
+    movq inBuff_ptr, %r14
+    inc %r11
+    cmpq inBuff_ptr, %r11
+    jge getIntDone
+    jmp getIntLoop
+    // 48 - 57
+  getIntDone:
+    ret
   getText:
     //
   getChar:
