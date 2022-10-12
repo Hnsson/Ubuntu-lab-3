@@ -57,6 +57,8 @@
 
     jmp getIntLoop
   getIntLoop:
+    movb (%r12), %dl
+    
     cmpb $'0', %dl
     jl getIntDone
     cmpb $'9', %dl 
