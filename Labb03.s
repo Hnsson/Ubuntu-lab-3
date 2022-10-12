@@ -1,5 +1,5 @@
 .data
-  null:          .byte 0x00
+  nul:          .byte 0x00
   end_ptr:      .quad 0
 
   inBuff:    	  .space 64
@@ -22,7 +22,7 @@
     incq %r14
     incq %rdi
     movb (%rdi), %r12b
-    cmpb %r12b, null
+    cmpb %r12b, nul
     jne inGetLen
     
     decq %r14
@@ -31,7 +31,7 @@
 
     ret
   getInt:
-    call checkInBuffSize
+  #  call checkInBuffSize fuckar ur när den här är inne, men ska vara det?
     xor %rsi, %rsi
     xor %r15, %r15
 
@@ -39,20 +39,11 @@
 
     leaq inBuff, %r12
     addq inBuff_ptr, %r12
-    jmp getIntLoop
-  getIntAddNegSymbol:
-    movq	$'-',%rdi
-    call	putChar
-    jmp getIntBegining
-  getIntAddSymbol:
-    cmpq $1, %rsi
-    je getIntAddNegSymbol
-    movq	$'+',%rdi
-    call	putChar
+    jmp getIntLoopSign
   getIntBegining:
     incq %r12
     incq inBuff_ptr
-  getIntLoop:
+  getIntLoopSign:
     movb (%r12), %dl
     
     cmpb $'+', %dl
@@ -62,27 +53,27 @@
     je getIntNeg
 
     cmpb $' ', %dl
-    // Concatenate ALL numbers
-    //je getIntNotInt
-    // Return after first number
-    //je getIntBegining
     je getIntBegining
-    
+
+    jmp getIntLoop
+  getIntLoop:
     cmpb $'0', %dl
     jl getIntDone
     cmpb $'9', %dl 
     jg getIntDone
-    // Add to buffer
+ 
     imulq $10, %r15
     subb $48, %dl
     addb %dl, %r15b
 
-    jmp getIntBegining
+    incq %r12
+    incq inBuff_ptr
+
+    jmp getIntLoop
     //
   getIntNeg:
     movq $1, %rsi
-  #  jmp getIntBegining
-    jmp getIntAddSymbol
+    jmp getIntBegining
   getIntMakeNeg:
     negq %r15
     movq $0, %rsi
