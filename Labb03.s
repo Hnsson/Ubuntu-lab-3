@@ -1,5 +1,6 @@
 .data
   nul:          .byte 0x00
+  end_ptr:      .quad 0
 
   inBuff:    	  .space 64
   inBuff_ptr: 	.quad  0
@@ -24,50 +25,49 @@
     jne inGetLen
     
     decq %r14
-    movq %r14, inBuff_ptr
+    movq %r14, end_ptr
+    movq $0, inBuff_ptr
 
     ret
   getInt:
-    call checkBuffSize
+    call checkInBuffSize
     xor %rsi, %rsi
-    xor %r11, %r11
-    xor %r13, %r13
+
     leaq inBuff, %r12
+    addq inBuff_ptr, %r12
+    jmp getIntLoop
+  getIntBegining:
+    incq %r12
+    incq inBuff_ptr
   getIntLoop:
     movb (%r12), %dl
-    incq %r12
     
     cmpb $'+', %dl
-    je getIntNotInt
+    je getIntBegining
 
     cmpb $'-', %dl
     je getIntNeg
 
     cmpb $' ', %dl
-    // Concatenate all numbers
+    // Concatenate ALL numbers
     //je getIntNotInt
     // Like Adam
-    je getIntDone
+    je getIntBegining
     
     cmpb $'0', %dl
-    jl getIntNotInt
+    jl getIntDone
     cmpb $'9', %dl 
-    jg getIntNotInt
+    jg getIntDone
     // Add to buffer
     imulq $10, %r15
     subb $48, %dl
     addb %dl, %r15b
-    //
-  getIntNotInt:
-    movq inBuff_ptr, %r14
-    inc %r11
-    cmpq inBuff_ptr, %r11
-    jge getIntDone
 
-    jmp getIntLoop
+    jmp getIntBegining
+    //
   getIntNeg:
     movq $1, %rsi
-    jmp getIntNotInt
+    jmp getIntBegining
   getIntMakeNeg:
     negq %r15
     movq $0, %rsi
@@ -78,7 +78,12 @@
     ret
 
   getText:
-    //
+    // %rsi -> längd
+    // %rdi -> buf
+    leaq inBuff, %r11
+
+  getTextLoop:
+  getTextDone:
   getChar:
     //
   getInPos:
@@ -98,7 +103,22 @@
 
     ret
   putInt:
-    //
+    // %rdi -> n
+    xor %r14, %r14
+    xor %r15, %r15
+    xor %rsi, %rsi
+    leaq outBuff, %r15
+    addq outBuff_ptr, %r15
+
+    cmpq $0, %rdi
+    jge putIntLoop
+    movq
+
+  putIntLoop:
+
+
+
+
   putText:
     leaq outBuff, %r10
     addq outBuff_ptr, %r10
@@ -108,13 +128,13 @@
     incq %rdi
     incq %r10
     incq outBuff_ptr
-    call checkBuffSize
+    call checkOutBuffSize
     movb (%rdi), %dl
     cmpb %dl, nul
     jne putTextLoop
     ret
   putChar:
-    call checkBuffSize
+    call checkOutBuffSize
     leaq outBuff, %rdx
     addq outBuff_ptr, %rdx
     movq %rdi, (%rdx)
@@ -136,8 +156,14 @@
   setOutPosZ:
     movq $0, outBuff_ptr
     ret
-  checkBuffSize:
+  checkOutBuffSize:
     cmpq $63, outBuff_ptr
     jge outImage
     ret
- 
+  checkInBuffSize:
+    movq end_ptr, %r10
+    cmpq %r10, inBuff_ptr
+    jz checkBuffSizeImage
+    ret
+  checkBuffSizeImage:
+    call inImage
