@@ -1,5 +1,5 @@
 .data
-  nul:          .byte 0x00
+  NULL:          .byte 0x00
   end_ptr:      .quad 0
 
   inBuff:    	  .space 64
@@ -22,7 +22,7 @@
     incq %r14
     incq %rdi
     movb (%rdi), %r12b
-    cmpb %r12b, nul
+    cmpb %r12b, NULL
     jne inGetLen
     
     decq %r14
@@ -31,7 +31,7 @@
 
     ret
   getInt:
-  #  call checkInBuffSize fuckar ur när den här är inne, men ska vara det?
+    call checkInBuffSize
     xor %rsi, %rsi
     xor %r15, %r15
 
@@ -72,7 +72,7 @@
     incq inBuff_ptr
 
     jmp getIntLoop
-    //
+
   getIntNeg:
     movq $1, %rsi
     jmp getIntBegining
@@ -86,18 +86,62 @@
     ret
 
   getText:
+    call checkInBuffSize
     // %rsi -> längd
     // %rdi -> buf
-    leaq inBuff, %r11
-
+    leaq inBuff, %r12
+    addq inBuff_ptr, %r12
+    xor %r14, %r14
   getTextLoop:
+    
+    movb (%r12), %dl
+    cmpb $0x0, %dl
+    je getTextDone
+
+    cmpq %r14, %rsi
+    jz getTextDone /* Stop reading at end. (jge not working ¯\_(ツ)_/¯) */
+    cmpb $' ', %dl
+    je getTextLoopSkip
+    movb %dl, (%rdi) /* more to param-buffer */
+  getTextLoopSkip:
+    incq %rdi /* Increase to get next param-buffer pos */
+    incq %r14 /* Increase to keep track of counter */
+    incq %r12 /* Increase to read from our buffers next pos */
+    incq inBuff_ptr /* Increase ptr to keep track of current content */
+
+    jmp getTextLoop
   getTextDone:
+    incq %rdi
+    movb $0x0, %dl
+    movb %dl, (%rdi) /* A string should always be NULLL-terminated */
+    ret
   getChar:
-    //
+    call checkInBuffSize
+    leaq inBuff, %r12
+    addq inBuff_ptr, %r12
+    movq (%r12), %rax /* Get current char in buffer and put it in output */
+    incq inBuff_ptr /* Move forward the current content */
+    ret
+
   getInPos:
-    //
+    movq inBuff_ptr, %rax
+    ret
+
+  setInPosGE:
+    movq $end_ptr, inBuff_ptr
+    ret
+  setinPosLE:
+    movq $0, inBuff_ptr
+    ret
   setInPos:
-    //
+    cmpq end_ptr, %rdi
+    jge setInPosGE /* greater than end of buff, set to end of buffer */
+    
+    cmpq $0, %rdi
+    jle setinPosLE /* less than 0, set to 0 */
+
+    movq %rdi, inBuff_ptr /* Between 0 and end_ptr just set */
+    ret
 /*-------------- Utmatning --------------*/
   outImage:
     leaq outBuff, %rsi
@@ -128,7 +172,6 @@
     addq outBuff_ptr, %r15
     movq $10, %rcx
     movq %rdi, %rax
-
 
     cmpq $0, %rdi
     jge putIntLoop
@@ -178,7 +221,7 @@
     incq outBuff_ptr
     call checkOutBuffSize
     movb (%rdi), %dl
-    cmpb %dl, nul
+    cmpb %dl, NULL
     jne putTextLoop
     ret
   putChar:
@@ -204,6 +247,7 @@
   setOutPosZ:
     movq $0, outBuff_ptr
     ret
+
   checkOutBuffSize:
     cmpq $63, outBuff_ptr
     jge outImage
@@ -211,8 +255,6 @@
   checkBuffSizeImage:
     call inImage
   checkInBuffSize:
-    cmpq $0, inBuff_ptr
-    jz checkBuffSizeImage
     movq end_ptr, %r10
     cmpq %r10, inBuff_ptr
     jz checkBuffSizeImage
