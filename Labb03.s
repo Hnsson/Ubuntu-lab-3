@@ -1,5 +1,4 @@
 .data
-  NULL:          .byte 0x00
   end_ptr:      .quad 0
 
   inBuff:    	  .space 64
@@ -22,9 +21,9 @@
     incq %r14
     incq %rdi
     movb (%rdi), %r12b
-    cmpb %r12b, NULL
+    cmpb $0x0, %r12b
     jne inGetLen
-    
+
     decq %r14
     movq %r14, end_ptr
     movq $0, inBuff_ptr
@@ -32,10 +31,8 @@
     ret
   getInt:
     call checkInBuffSize
-    xor %rsi, %rsi
+    xor %r14, %r14
     xor %r15, %r15
-
-    movq end_ptr, %rbx
 
     leaq inBuff, %r12
     addq inBuff_ptr, %r12
@@ -74,13 +71,13 @@
     jmp getIntLoop
 
   getIntNeg:
-    movq $1, %rsi
+    movq $1, %r14
     jmp getIntBegining
   getIntMakeNeg:
     negq %r15
-    movq $0, %rsi
+    movq $0, %r14 # Reset negative checker
   getIntDone:
-    cmpq $1, %rsi
+    cmpq $1, %r14
     je getIntMakeNeg
     movq %r15, %rax
     ret
@@ -93,8 +90,8 @@
     addq inBuff_ptr, %r12
     xor %r14, %r14
   getTextLoop:
-    
     movb (%r12), %dl
+    
     cmpb $0x0, %dl
     je getTextDone
 
@@ -146,11 +143,10 @@
   outImage:
     leaq outBuff, %rsi
 
-    pushq %rsi
-    movb $0x0, %r10b
+    
     addq outBuff_ptr, %rsi
-    movb %r10b, (%rsi)
-    popq %rsi
+    movb $0x0, (%rsi)
+    subq outBuff_ptr, %rsi 
 
     movq (outBuff_ptr), %rdx   # message length
     movq $outBuff, %rsi        # message
@@ -159,8 +155,6 @@
     syscall                    # call kernel
 
     movq $0, outBuff_ptr
-    movq outBuff_ptr, %rsi
-    addq outBuff_ptr, %rsi
 
     ret
   putInt:
@@ -211,18 +205,20 @@
     ret
 
   putText:
-    leaq outBuff, %r10
-    addq outBuff_ptr, %r10
+    leaq outBuff, %r12
+    addq outBuff_ptr, %r12
     movb (%rdi), %dl
   putTextLoop:
-    movb %dl, (%r10)
+    movb %dl, (%r12) # move char to our inbuff
     incq %rdi
-    incq %r10
+    incq %r12
     incq outBuff_ptr
-    call checkOutBuffSize
+    call checkOutBuffSize # Check after adding every char
     movb (%rdi), %dl
-    cmpb %dl, NULL
-    jne putTextLoop
+    cmpb $0x0, %dl
+    je putTextEnd
+    jmp putTextLoop
+  putTextEnd:
     ret
   putChar:
     call checkOutBuffSize
@@ -237,12 +233,12 @@
   setOutPos:
     cmpq $0, %rdi
     jle setOutPosZ
-    cmpq $63, %rdi
+    cmpq $end_ptr, %rdi
     jge setOutPosM
     movq %rdi, outBuff_ptr
     ret
   setOutPosM:
-    movq $63, outBuff_ptr
+    movq $end_ptr, outBuff_ptr
     ret
   setOutPosZ:
     movq $0, outBuff_ptr
@@ -252,10 +248,12 @@
     cmpq $63, outBuff_ptr
     jge outImage
     ret
-  checkBuffSizeImage:
+
+  checkInBuffCallImage:
     call inImage
+    ret
   checkInBuffSize:
     movq end_ptr, %r10
     cmpq %r10, inBuff_ptr
-    jz checkBuffSizeImage
+    jz checkInBuffCallImage
     ret
